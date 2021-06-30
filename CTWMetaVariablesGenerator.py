@@ -9,7 +9,7 @@ from pathlib import Path
 
 #Implementation of the CTW Meta Variables Generator
 """
-Name: CTW Basic Variables Generator
+Name: CTW Meta Variables Generator
 Description: This is a python script for the generation of realistic values for the meta variables of cable tree wiring (CTW) instances
 The meta variables are:
 -"numTwoSidedCables":           The number of two-sided cables in a CTW instance
