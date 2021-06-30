@@ -10,11 +10,11 @@ from pathlib import Path
 #Implementation of the CTW Meta Variables Generator
 """
 Name: CTW Basic Variables Generator
-Description: This is a python script for the generation of realistic values for the Meta Variables of cable tree wiring (CTW) instances
-The Meta Variables are:
+Description: This is a python script for the generation of realistic values for the meta variables of cable tree wiring (CTW) instances
+The meta variables are:
 -"numTwoSidedCables":           The number of two-sided cables in a CTW instance
 -"numOneSidedCables":           The number of one-sided cables in a CTW instance
--"numSideCables":               The number of side-cables in a CTW instance (cables that have none of their both ends plugged into the central plug)
+-"numSideCables":               The number of side-cables in a CTW instance (two-sided cables that have none of their both ends plugged into the central plug)
 -"numHousings":                 The number of housings for a CTW instance
 -"numDifferentHousingTypes":    The number of different housing types in a CTW instance
 -"numFreeCentralCavs":          The number of cavities in the central plug in which no cable end is plugged in
@@ -39,7 +39,7 @@ Input:
 
 
 Output:
-A semicolon seperated csv file with "numToGenerate" number of meta variable records.
+A semicolon seperated CSV file with "numToGenerate" number of meta variable records.
 
 """
 
@@ -57,7 +57,7 @@ constK = -1         //Sets k to a constant value
 constB = -1         //Sets numTwoSidedCables to a constant value
 constO = -1         //Sets numOneSidedCables to a constant value
 constNumSideCables = -1     //Sets numSideCables to a constant value
-With all values set to default this script generates realistic values for the Meta Variables with varying values for numTwoSidedCables, numOneSidedCables and numSideCables.
+With all values set to default this script generates realistic values for the Meta Variables with varying values for k, numTwoSidedCables, numOneSidedCables and numSideCables.
 
 
 """
@@ -69,7 +69,7 @@ constB = -1
 constO = -1
 constNumSideCables = -1
 outputPath = ""   #e.g. "C:\\Users\\Name\\Desktop\\meta_data.csv"
-numToGenerate = 600
+numToGenerate = 300
 
 if (outputPath == ""):
     outputPath = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -86,8 +86,8 @@ if (outputPath == ""):
 # To guarantee that the input describes valid meta variables we check the min-max constraints (e.g. 0 <= bInput <= 99)
 # as well as inter-relationships (e.g. numSideCablesInput < 0.8 * bInput)
 # Additionally, when kInput != -1 it must be possible generate numSideCables and numOneSidedCables so that kInput = 2*numTwoSidedCables + numOneSidedCables
+
 def validateInput(kInput:int, bInput:int, oInput:int, numSideCablesInput:int):
-    #Check whether types are correct
     if(type(kInput) != int or type(bInput) != int or type(oInput) != int or type(numSideCablesInput) != int):
         raise Exception("At least one input variable is of a wrong type! kInput, bInput, oInput and numSideCablesInput have to be of type int")
     validateMinMaxConstraints(kInput, bInput, oInput, numSideCablesInput)
@@ -106,7 +106,7 @@ def validateMinMaxConstraints(kInput:int, bInput:int, oInput:int, numSideCablesI
             raise Exception("kInput is not in the valid range! (0 < kInput <= 198)")
 
     if(bInput != -1):
-        if(bInput < 0 or bInput > 100):
+        if(bInput < 0 or bInput > 99):
             raise Exception("bInput is not in the valid range! (0 <= bInput <= 100)")
     
     if(oInput != -1):
@@ -114,11 +114,15 @@ def validateMinMaxConstraints(kInput:int, bInput:int, oInput:int, numSideCablesI
             raise Exception("oInput is not in the valid range! (0 <= oInput <= 20)")
     
     if(numSideCablesInput != -1):
-        if(numSideCablesInput < 0 or numSideCablesInput > 65):
-            raise Exception("numSideCablesInput is not in the valid range! (0 <= numSideCablesInput <= 65)")
+        if(numSideCablesInput < 0 or numSideCablesInput > 63):
+            raise Exception("numSideCablesInput is not in the valid range! (0 <= numSideCablesInput <= 63)")
 
 
 def validateRelations(kInput:int, bInput:int, oInput:int, numSideCablesInput:int):
+
+    if(bInput != -1 and oInput != -1):
+        if(bInput + oInput < 1):
+            raise Exception("bInput + oInput must be greater than 0!")
 
     if(kInput != -1 and bInput != -1 and oInput != -1):
         if(kInput != 2* bInput + oInput):
@@ -135,13 +139,15 @@ def validateRelations(kInput:int, bInput:int, oInput:int, numSideCablesInput:int
     if(numSideCablesInput != -1 and bInput != -1):
         if(numSideCablesInput > bInput):
             raise Exception("numSideCablesInput cannot be greater than bInput")
+        if(numSideCablesInput > 0.8*bInput):
+            raise Exception("numSideCablesInput cannot be greater than 0.8*bInput")
     elif(numSideCablesInput != -1 and kInput != -1):
         if(oInput != -1):
             if(kInput < 2*numSideCablesInput + oInput):
-                raise Exception("kInput must be smaller than 2*numSideCablesInput + oInput")
+                raise Exception("kInput must be greater than 2*numSideCablesInput + oInput")
         else:
             if(kInput < 2*numSideCablesInput):
-                raise Exception("kInput must be smaller than 2*numSideCablesInput")
+                raise Exception("kInput must be greater than 2*numSideCablesInput")
 
 
 
@@ -174,7 +180,7 @@ def sampleOneSidedGivenKInput(k):
     o=[]
     for i in range(0,len(k)):
         rnum = random.uniform(0, 1)
-        #in round about 0.832 of the instances we have 0 one-sided cables //when k % 2 = 1 then we need an odd number of one-sided cables
+        #in round about 0.8 of the instances we have 0 one-sided cables //when k % 2 = 1 then we need an odd number of one-sided cables
         if(rnum < 0.8):
             if(k[i] % 2):
                 o.append(1)
@@ -197,7 +203,7 @@ def sampleOneSidedGivenB(b):
     o=[]
     for i in range(0,len(b)):
         rnum = random.uniform(0, 1)
-        #in round about 0.832 of the instances we have 0 one-sided cables
+        #in round about 0.8 of the instances we have 0 one-sided cables
         if(rnum < 0.8 and b[i] != 0):
             o.append(0)
         else:
@@ -230,7 +236,9 @@ def sampleOneSidedGivenB(b):
 #First validate the input
 validateInput(constK, constB, constO, constNumSideCables) #throws error with description of the cause if input parameters are invalid
 
+
 #Compute B (numTwoSidedCables) and O (numOneSidedCables) Arrays as well as the helper variable K (K = 2*B + O)
+
 if(constK != -1 and constB == -1):
     k = np.full((numToGenerate,), constK)
     if(constO == -1):
@@ -269,14 +277,14 @@ elif(constK == -1 and constB != -1):
 
 
 
-##############B DataFrame################
+##############numTwoSidedCables DataFrame################
 newBData = pd.DataFrame(b, columns=['numTwoSidedCables'])
 
 print("==Succesfully generated numTwoSidedCables==")
 
 
 
-##############O DataFrame################
+##############numOneSidedCables DataFrame################
 newOData = pd.DataFrame(o, columns=['numOneSidedCables'])
 
 print("==Succesfully generated numOneSidedCables==")
@@ -289,7 +297,7 @@ print("==Succesfully generated numOneSidedCables==")
 
 
 
-################numHousings###################
+################Compute numHousings###################
 numHousings = []
 
 def housingFromKWithNoise(k:int):
@@ -335,15 +343,26 @@ for kVal in k:
     numHousings.append(hVal)
 
 
+##############numHousings DataFrame################
 newHousingData = pd.DataFrame(numHousings, columns=['numHousings'])
 
 print("==Succesfully generated numHousings==")
 
 
 
-#################numSideCable###################
+
+#################Compute numSideCables###################
+
+#When constNumSideCables != -1:
+#Works when bInput and constNumSideCable both != -1
+#When bInput not given then numSideCables will be set to constNumSideCables only if constNumSideCables <= 0.8*numTwoSidedCables else it is set to zero
 if(constNumSideCables != -1):
-    numSideCables= np.full((numToGenerate,), constNumSideCables)
+    numSideCables = []
+    for bVal in b:
+        if(constNumSideCables > 0.8*bVal):
+            numSideCables.append(0)
+        else:
+            numSideCables.append(constNumSideCables)
 
 else:
     numSideCables = []
@@ -404,13 +423,17 @@ else:
             numSideCables.append(val)
             continue
         numSideCables.append(val)
-###################################################################
+
+
+##############numSideCables DataFrame################
 newSideData = pd.DataFrame(numSideCables, columns=['numSideCables'])
-###################################################################
+
 print("==Succesfully generated numSideCables==")
 
 
-#####################numHousingTypes###############################
+
+
+#####################Compute numDifferentHousingTypes###############################
 numDifferentHousingTypes = []
 for i in range(0,numToGenerate):
     if(b[i] > 37):
@@ -443,53 +466,17 @@ for i in range(0,numToGenerate):
     else:
         randVal = random.randint(2,6)
         numDifferentHousingTypes.append(randVal)
-########################################################################
+
+
+##############numDifferentHousingTypes DataFrame################
 newHTypesData = pd.DataFrame(numDifferentHousingTypes, columns=['numDifferentHousingTypes'])
-########################################################################
+
 print("==Successfully generated numDifferentHousingTypes==")
 
 
 
-"""
-#####################numWireTypes###################################
 
-#completely random -> sample from distribution and cannot be bigger than number of cables used in cable tree
-numWireTypes = []
-
-
-for i in range(0,numToGenerate):
-    rnum = random.uniform(0, 1)
-    #in round about 0.832 of the instances we have 0 one-sided cables
-    if(rnum < 0.66): #war 0.66
-        numWireTypes.append(1)
-        continue
-    else:
-        val = st.weibull_min.rvs(c=0.92, loc=2.00, scale=1.63, size=1)[0]
-        val = int(round(val))
-    totalNumCables = o[i] + b[i]
-   
-    if(val > totalNumCables):
-        val = totalNumCables
-        numWireTypes.append(val)
-        continue
-    if(val > 10):
-        numWireTypes.append(10)
-        continue
-    if(val < 1): #is always false
-        numWireTypes.append(1)
-        continue
-    
-    numWireTypes.append(val)
-########################################################################
-newWTypesData = pd.DataFrame(numWireTypes, columns=['numWireTypes'])
-########################################################################
-print("10")
-"""
-
-
-
-
-#####################numFreeCentralCavs###################################
+#####################Compute numFreeCentralCavs###################################
 numFreeCentralCavs = []
 
 
@@ -531,13 +518,15 @@ for i in range(0,numToGenerate):
     
     numFreeCentralCavs.append(randVal)
 
-newFreeCentralCavData = pd.DataFrame(numFreeCentralCavs, columns=['numFreeCentralCavs'])
 
+##############numFreeCentralCavs DataFrame################
+newFreeCentralCavData = pd.DataFrame(numFreeCentralCavs, columns=['numFreeCentralCavs'])
 
 print("==Succesfully generated numFreeCentralCavs==")
 
 
-#####################numFreeSmallCavs#####################################
+
+#####################Compute numFreeNormalCavs#####################################
 def maxFreeFromNumHousings(numHousings:int):
     if(numHousings == 1):
         return 0
@@ -562,9 +551,9 @@ def maxFreeFromHousingTypes(numHousingTypes:int):
 
 numFreeNormalCavs = []
 for i in range(0,numToGenerate):
-    neededSmallCavs = numSideCables[i] + b[i] + o[i] # = 2*numSideCables[i] + (b[i] - numSideCables[i]) + o[i]
+    neededNormalCavs = numSideCables[i] + b[i] + o[i] # = 2*numSideCables[i] + (b[i] - numSideCables[i]) + o[i]
     neededcentralCavs = b[i]-numSideCables[i] + numFreeCentralCavs[i]
-    if(neededSmallCavs < 40):
+    if(neededNormalCavs < 40):
         rnum = random.uniform(0, 1)
         if(rnum < 0.85):
             randVal = st.invgauss.rvs(mu=4.09, loc=-0.41, scale=1.51, size=1)[0]
@@ -575,9 +564,9 @@ for i in range(0,numToGenerate):
             randVal = random.randint(21,40)
         else:
             randVal = random.randint(41,180)
-    elif(neededSmallCavs < 66):
+    elif(neededNormalCavs < 66):
         randVal = random.randint(16,160)
-    elif(neededSmallCavs < 120):
+    elif(neededNormalCavs < 120):
         randVal = random.randint(0,140)
     else: #zwischen 120 und 0
         randVal = random.randint(0,70)
@@ -589,16 +578,20 @@ for i in range(0,numToGenerate):
         randVal = random.randint(0,numMaxFromNumH)
     if(randVal > numMaxFromHTypes):
         randVal = random.randint(0,numMaxFromHTypes)
-    if(randVal + neededcentralCavs + neededSmallCavs > 260):
-        randVal = 260 - neededcentralCavs - neededSmallCavs
+    if(randVal + neededcentralCavs + neededNormalCavs > 260):
+        randVal = 260 - neededcentralCavs - neededNormalCavs
 
     numFreeNormalCavs.append(randVal)
 
-newFreeNormalCavData = pd.DataFrame(numFreeNormalCavs, columns=['numFreeNormalCavs'])
 
+##############numFreeNormalCavs DataFrame################
+newFreeNormalCavData = pd.DataFrame(numFreeNormalCavs, columns=['numFreeNormalCavs'])
 
 print("==Succesfully generated numFreeNormalCavs==")
 
+
+
+#Output
 newResult = pd.concat([newBData, newOData, newSideData, newHousingData, newHTypesData, newFreeCentralCavData, newFreeNormalCavData], axis=1)
 
 
